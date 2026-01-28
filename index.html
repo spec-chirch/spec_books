@@ -93,9 +93,9 @@
 <script type="importmap">
 {
   "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
     "lucide-react": "https://esm.sh/lucide-react@^0.563.0"
   }
 }
@@ -129,24 +129,23 @@
             <div class="px-4 py-4 max-w-2xl mx-auto">
                 <h1 class="text-3xl font-bold text-gray-900 mb-4 tracking-tight">Библиотека</h1>
                 
-                <!-- Поисковая строка -->
-                <div class="relative mb-3">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
+                <!-- Поисковая строка и Кнопка фильтра (в одну строку) -->
+                <div class="flex gap-2 mb-3">
+                    <div class="relative flex-1">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
+                        </div>
+                        <input type="text" id="search-input" placeholder="Поиск по названию, автору..." 
+                            class="block w-full pl-10 pr-3 py-2.5 border-none rounded-xl bg-gray-200/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ios-blue/50 transition-all">
+                        <button id="clear-search" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
                     </div>
-                    <input type="text" id="search-input" placeholder="Поиск по названию, автору..." 
-                        class="block w-full pl-10 pr-3 py-2.5 border-none rounded-xl bg-gray-200/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ios-blue/50 transition-all">
-                    <button id="clear-search" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
-                        <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
-                </div>
 
-                <!-- Кнопка фильтров -->
-                <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                    <button id="toggle-filters-btn" class="flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap bg-white text-gray-700 shadow-sm border border-gray-100">
-                        <i data-lucide="filter" class="w-4 h-4 mr-2"></i>
-                        <span id="filter-btn-text">Фильтры</span>
-                        <span id="active-filters-badge" class="hidden ml-1.5 bg-ios-blue text-white px-1.5 py-0.5 rounded-full text-xs">0</span>
+                    <!-- Кнопка фильтров (только иконка) -->
+                    <button id="toggle-filters-btn" class="flex-none w-11 h-11 flex items-center justify-center bg-white rounded-xl shadow-sm border border-gray-100 text-gray-700 transition-colors relative">
+                        <i data-lucide="filter" class="w-5 h-5"></i>
+                        <span id="active-filters-badge" class="hidden absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-ios-blue text-[10px] text-white ring-2 ring-white">0</span>
                     </button>
                 </div>
 
@@ -192,11 +191,13 @@
         <div id="modal-content" class="w-full max-w-lg bg-white sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform translate-y-full transition-transform duration-300 pointer-events-auto">
             
             <!-- Картинка в модальном окне -->
-            <div class="relative h-64 sm:h-72 w-full flex-shrink-0 bg-gray-100">
+            <div class="relative h-64 sm:h-72 w-full flex-shrink-0 bg-gray-100 group">
                 <button id="close-modal" class="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-black/30 transition-colors">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
-                <img id="modal-image" src="" alt="Book Cover" class="w-full h-full object-cover">
+                
+                <img id="modal-image" src="" alt="Book Cover" class="w-full h-full object-cover cursor-zoom-in active:scale-[0.98] transition-transform">
+                
                 <div id="modal-image-placeholder" class="hidden absolute inset-0 flex flex-col items-center justify-center text-gray-400">
                     <i data-lucide="image-off" class="w-12 h-12 mb-2"></i>
                     <span class="text-sm">Нет обложки</span>
@@ -210,10 +211,10 @@
                     
                     <h2 id="modal-title" class="text-2xl font-bold text-gray-900 leading-tight mb-2"></h2>
                     
-                    <div class="flex items-center text-ios-blue font-medium text-lg mb-4">
+                    <button id="modal-author-btn" class="flex items-center text-ios-blue font-medium text-lg mb-4 hover:underline focus:outline-none">
                         <i data-lucide="user" class="w-5 h-5 mr-2"></i>
                         <span id="modal-author"></span>
-                    </div>
+                    </button>
 
                     <div id="modal-description" class="prose prose-sm text-gray-600 leading-relaxed whitespace-pre-wrap"></div>
                 </div>
@@ -227,6 +228,14 @@
                 </button>
             </div>
         </div>
+    </div>
+
+    <!-- Полноэкранный просмотр изображения -->
+    <div id="fullscreen-overlay" class="hidden fixed inset-0 z-[60] bg-black/95 flex items-center justify-center animate-fade-in cursor-pointer">
+        <button id="close-fullscreen" class="absolute top-4 right-4 z-20 w-10 h-10 flex items-center justify-center bg-white/20 rounded-full text-white hover:bg-white/30 backdrop-blur-sm">
+            <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+        <img id="fullscreen-image" src="" class="max-w-full max-h-full p-2 object-contain" alt="Fullscreen cover">
     </div>
 
     <!-- JavaScript Logic -->
@@ -277,9 +286,14 @@
             modalStatusBadge: document.getElementById('modal-status-badge'),
             modalTitle: document.getElementById('modal-title'),
             modalAuthor: document.getElementById('modal-author'),
+            modalAuthorBtn: document.getElementById('modal-author-btn'),
             modalDescription: document.getElementById('modal-description'),
             modalActionBtn: document.getElementById('modal-action-btn'),
             modalBtnText: document.getElementById('modal-btn-text'),
+
+            fullscreenOverlay: document.getElementById('fullscreen-overlay'),
+            fullscreenImage: document.getElementById('fullscreen-image'),
+            closeFullscreenBtn: document.getElementById('close-fullscreen'),
         };
 
         // --- Инициализация ---
@@ -451,12 +465,9 @@
                             <h3 class="font-bold text-gray-900 text-sm leading-tight line-clamp-2 mb-1">${book.title || 'Без названия'}</h3>
                             <p class="text-xs text-ios-subtext line-clamp-1 mb-2">${book.author || 'Автор неизвестен'}</p>
                         </div>
-                        <div class="flex items-end justify-between">
-                            <div class="flex flex-col items-start gap-1.5">
-                                <span class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md truncate max-w-[140px]">${book.category}</span>
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${statusClass}">${book.status}</span>
-                            </div>
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-gray-300"></i>
+                        <div class="flex items-end justify-between mt-auto">
+                            <span class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md truncate max-w-[140px]">${book.category}</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${statusClass}">${book.status}</span>
                         </div>
                     </div>
                 </div>
@@ -489,6 +500,7 @@
             els.modalImagePlaceholder.classList.add('hidden');
             if (book.coverUrl) {
                 els.modalImage.src = book.coverUrl;
+                els.modalImage.onclick = () => openFullscreen(book.coverUrl);
                 els.modalImage.onerror = () => {
                     els.modalImage.style.display = 'none';
                     els.modalImagePlaceholder.classList.remove('hidden');
@@ -559,6 +571,52 @@
             }
         }
 
+        function handleAuthorClick(e) {
+            e.stopPropagation();
+            if(!state.selectedBook) return;
+            const author = state.selectedBook.author;
+            
+            // Close modal first
+            closeModal();
+            
+            // Wait for modal transition to avoid jarring effect, then apply filter
+            setTimeout(() => {
+                state.filters.search = '';
+                state.filters.category = 'Все';
+                state.filters.status = 'Все';
+                state.filters.author = author;
+                
+                // Update UI elements
+                els.searchInput.value = '';
+                els.clearSearchBtn.classList.add('hidden');
+                els.authorSelect.value = author;
+                els.categorySelect.value = 'Все';
+                els.statusSelect.value = 'Все';
+                
+                applyFilters();
+                
+                // Optional: Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 300);
+        }
+
+        function openFullscreen(url) {
+            els.fullscreenImage.src = url;
+            els.fullscreenOverlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeFullscreen(e) {
+            if (e) e.stopPropagation();
+            els.fullscreenOverlay.classList.add('hidden');
+            // Only restore scroll if modal is not open, but since modal is behind, we usually keep it hidden
+            // However, modal logic also sets overflow hidden. 
+            // If we are coming back to modal, keep it hidden.
+            if (!state.selectedBook) {
+                document.body.style.overflow = '';
+            }
+        }
+
         // --- Event Listeners ---
         
         // Search
@@ -608,6 +666,11 @@
         els.closeModalBtn.addEventListener('click', closeModal);
         els.modalBackdrop.addEventListener('click', closeModal);
         els.modalActionBtn.addEventListener('click', handleAction);
+        els.modalAuthorBtn.addEventListener('click', handleAuthorClick);
+
+        // Fullscreen
+        els.fullscreenOverlay.addEventListener('click', closeFullscreen);
+        els.closeFullscreenBtn.addEventListener('click', closeFullscreen);
 
         // Start
         init();
