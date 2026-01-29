@@ -11,6 +11,9 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Icons (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
     <!-- Tailwind Config -->
     <script>
         tailwind.config = {
@@ -38,13 +41,7 @@
     </script>
 
     <style>
-        body {
-            background-color: #F2F2F6;
-            -webkit-font-smoothing: antialiased;
-            overscroll-behavior-y: none;
-        }
-
-        /* Standard scrollbar hiding */
+        /* Скрытие скроллбара */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -52,20 +49,623 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        
+        body {
+            background-color: #F2F2F6;
+            -webkit-font-smoothing: antialiased;
+            overscroll-behavior-y: none; /* Предотвращает "оттягивание" страницы на iOS */
+        }
+
+        /* Анимации */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        /* Стили для лоадера */
+        .spinner {
+            border: 3px solid rgba(0, 122, 255, 0.1);
+            border-left-color: #007AFF;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0"
-  }
-}
-</script>
 </head>
-<body class="text-gray-900">
-    <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+<body class="text-gray-900 pb-10 min-h-screen">
+
+    <!-- Экран загрузки -->
+    <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-ios-bg text-ios-subtext">
+        <div class="spinner mb-4"></div>
+        <p class="font-medium text-lg">Загрузка библиотеки...</p>
+    </div>
+
+    <!-- Экран ошибки -->
+    <div id="error-screen" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-ios-bg p-6 text-center">
+        <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6">
+            <i data-lucide="book-open" class="w-10 h-10 text-ios-red"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">Ой!</h2>
+        <p id="error-message" class="text-lg text-gray-600 mb-8"></p>
+        <button onclick="window.location.reload()" class="px-8 py-4 bg-ios-blue text-white rounded-xl font-semibold shadow-sm active:scale-95 transition-transform text-lg">
+            Попробовать снова
+        </button>
+    </div>
+
+    <!-- Основной контент -->
+    <div id="main-content" class="hidden">
+        
+        <!-- Хедер и Фильтры -->
+        <div class="sticky top-0 z-20 bg-ios-bg/95 backdrop-blur-md border-b border-ios-separator/50 pb-2 transition-all">
+            <div class="px-4 py-4 max-w-2xl mx-auto">
+                <h1 class="text-4xl font-bold text-gray-900 mb-5 tracking-tight">Библиотека</h1>
+                
+                <!-- Поисковая строка и Кнопка фильтра -->
+                <div class="flex gap-2 mb-3">
+                    <div class="relative flex-1">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
+                        </div>
+                        <input type="text" id="search-input" placeholder="Поиск по названию, автору..." 
+                            class="block w-full pl-10 pr-3 py-3 border-none rounded-xl bg-gray-200/50 text-gray-900 text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ios-blue/50 transition-all">
+                        <button id="clear-search" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Кнопка фильтров -->
+                    <button id="toggle-filters-btn" class="flex-none w-12 h-12 flex items-center justify-center bg-white rounded-xl shadow-sm border border-gray-100 text-gray-700 transition-colors relative">
+                        <i data-lucide="filter" class="w-6 h-6"></i>
+                        <span id="active-filters-badge" class="hidden absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-ios-blue text-[11px] text-white ring-2 ring-white">0</span>
+                    </button>
+                </div>
+
+                <!-- Панель фильтров -->
+                <div id="filters-panel" class="hidden mt-3 p-4 bg-white rounded-xl shadow-sm border border-gray-100 animate-fade-in">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Категория</label>
+                            <select id="category-select" class="block w-full py-2.5 px-3 border border-gray-200 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-ios-blue/50 text-base text-gray-700"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Статус</label>
+                            <select id="status-select" class="block w-full py-2.5 px-3 border border-gray-200 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-ios-blue/50 text-base text-gray-700"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Автор</label>
+                            <select id="author-select" class="block w-full py-2.5 px-3 border border-gray-200 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-ios-blue/50 text-base text-gray-700"></select>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button id="reset-filters" class="text-sm text-ios-red font-medium hover:underline">Сбросить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Список книг -->
+        <main class="px-4 pt-4 max-w-2xl mx-auto pb-20">
+            <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 text-ios-subtext">
+                <i data-lucide="book-open" class="w-16 h-16 mb-4 opacity-20"></i>
+                <p class="text-lg">По вашему запросу ничего не найдено.</p>
+            </div>
+            
+            <div id="books-container" class="flex flex-col gap-4">
+                <!-- Сюда будут вставляться карточки книг через JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Модальное окно -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity opacity-0"></div>
+    <div id="book-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
+        <div id="modal-content" class="w-full max-w-lg bg-white sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform translate-y-full transition-transform duration-300 pointer-events-auto">
+            
+            <!-- Картинка в модальном окне -->
+            <div class="relative h-64 sm:h-72 w-full flex-shrink-0 bg-gray-100 group">
+                <button id="close-modal" class="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-black/30 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                
+                <img id="modal-image" src="" alt="Book Cover" class="w-full h-full object-cover cursor-zoom-in active:scale-[0.98] transition-transform">
+                
+                <div id="modal-image-placeholder" class="hidden absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                    <i data-lucide="image-off" class="w-16 h-16 mb-2"></i>
+                    <span class="text-base">Нет обложки</span>
+                </div>
+            </div>
+
+            <!-- Контент модального окна -->
+            <div class="flex-1 overflow-y-auto overflow-x-hidden p-6 bg-white">
+                <div class="mb-6">
+                    <span id="modal-status-badge" class="inline-block px-3 py-1.5 rounded-full text-sm font-semibold tracking-wide uppercase mb-4"></span>
+                    
+                    <h2 id="modal-title" class="text-3xl font-bold text-gray-900 leading-tight mb-2"></h2>
+                    
+                    <button id="modal-author-btn" class="flex items-center text-ios-blue font-medium text-xl mb-5 hover:underline focus:outline-none">
+                        <i data-lucide="user" class="w-5 h-5 mr-2"></i>
+                        <span id="modal-author"></span>
+                    </button>
+
+                    <div id="modal-description" class="prose text-gray-700 leading-relaxed whitespace-pre-wrap text-base"></div>
+                </div>
+            </div>
+
+            <!-- Футер с кнопкой -->
+            <div class="p-4 border-t border-gray-100 bg-white/95 backdrop-blur pb-8 sm:pb-4">
+                <button id="modal-action-btn" class="w-full py-5 rounded-xl font-bold text-xl shadow-sm flex items-center justify-center transition-all">
+                    <span id="modal-btn-text"></span>
+                    <i data-lucide="external-link" class="w-6 h-6 ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Полноэкранный просмотр изображения -->
+    <div id="fullscreen-overlay" class="hidden fixed inset-0 z-[60] bg-black/95 flex items-center justify-center animate-fade-in cursor-pointer">
+        <button id="close-fullscreen" class="absolute top-4 right-4 z-20 w-12 h-12 flex items-center justify-center bg-white/20 rounded-full text-white hover:bg-white/30 backdrop-blur-sm">
+            <i data-lucide="x" class="w-7 h-7"></i>
+        </button>
+        <img id="fullscreen-image" src="" class="max-w-full max-h-full p-2 object-contain" alt="Fullscreen cover">
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Константы и Состояние ---
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/15tlzACTh2vziwt6ibdlqe__DhaO-FU7Lx0WUgOuvpr8/export?format=csv';
+
+        const state = {
+            allBooks: [],
+            filteredBooks: [],
+            filters: {
+                search: '',
+                category: 'Все',
+                status: 'Все',
+                author: 'Все'
+            },
+            selectedBook: null
+        };
+
+        // --- DOM Элементы ---
+        const els = {
+            loadingScreen: document.getElementById('loading-screen'),
+            errorScreen: document.getElementById('error-screen'),
+            errorMessage: document.getElementById('error-message'),
+            mainContent: document.getElementById('main-content'),
+            
+            booksContainer: document.getElementById('books-container'),
+            emptyState: document.getElementById('empty-state'),
+            
+            searchInput: document.getElementById('search-input'),
+            clearSearchBtn: document.getElementById('clear-search'),
+            
+            toggleFiltersBtn: document.getElementById('toggle-filters-btn'),
+            filtersPanel: document.getElementById('filters-panel'),
+            activeFiltersBadge: document.getElementById('active-filters-badge'),
+            categorySelect: document.getElementById('category-select'),
+            statusSelect: document.getElementById('status-select'),
+            authorSelect: document.getElementById('author-select'),
+            resetFiltersBtn: document.getElementById('reset-filters'),
+            
+            modalBackdrop: document.getElementById('modal-backdrop'),
+            bookModal: document.getElementById('book-modal'),
+            modalContent: document.getElementById('modal-content'),
+            closeModalBtn: document.getElementById('close-modal'),
+            
+            modalImage: document.getElementById('modal-image'),
+            modalImagePlaceholder: document.getElementById('modal-image-placeholder'),
+            modalStatusBadge: document.getElementById('modal-status-badge'),
+            modalTitle: document.getElementById('modal-title'),
+            modalAuthor: document.getElementById('modal-author'),
+            modalAuthorBtn: document.getElementById('modal-author-btn'),
+            modalDescription: document.getElementById('modal-description'),
+            modalActionBtn: document.getElementById('modal-action-btn'),
+            modalBtnText: document.getElementById('modal-btn-text'),
+
+            fullscreenOverlay: document.getElementById('fullscreen-overlay'),
+            fullscreenImage: document.getElementById('fullscreen-image'),
+            closeFullscreenBtn: document.getElementById('close-fullscreen'),
+        };
+
+        // --- Инициализация ---
+        async function init() {
+            // Telegram WebApp Setup
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.expand();
+                window.Telegram.WebApp.setHeaderColor('#F2F2F6');
+                window.Telegram.WebApp.setBackgroundColor('#F2F2F6');
+            }
+
+            try {
+                const books = await fetchBooks();
+                state.allBooks = books;
+                state.filteredBooks = books;
+                
+                populateFilterOptions();
+                renderBooks();
+                
+                els.loadingScreen.classList.add('hidden');
+                els.mainContent.classList.remove('hidden');
+                
+                // Инициализация иконок
+                lucide.createIcons();
+            } catch (err) {
+                console.error(err);
+                els.loadingScreen.classList.add('hidden');
+                els.errorScreen.classList.remove('hidden');
+                els.errorMessage.textContent = 'Не удалось загрузить данные. Проверьте интернет соединение.';
+            }
+        }
+
+        // --- Сервис данных ---
+        async function fetchBooks() {
+            const response = await fetch(SHEET_URL);
+            if (!response.ok) throw new Error('Network error');
+            const csvText = await response.text();
+            return parseCSV(csvText);
+        }
+
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            if (lines.length < 2) return [];
+
+            const headers = parseCSVLine(lines[0]);
+            const mapIndices = {};
+            headers.forEach((h, i) => mapIndices[h.trim()] = i);
+
+            const books = [];
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const cols = parseCSVLine(line);
+                const getCol = (key) => {
+                    const idx = mapIndices[key];
+                    return (idx !== undefined && cols[idx]) ? cols[idx] : '';
+                };
+
+                books.push({
+                    title: getCol('Название'),
+                    author: getCol('Автор'),
+                    category: getCol('Категория'),
+                    status: getCol('Статус'),
+                    coverUrl: getCol('Обложка'),
+                    ownerUsername: getCol('Telegram').replace('@', ''),
+                    description: getCol('Аннотация')
+                });
+            }
+            return books;
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let start = 0;
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                if (line[i] === '"') inQuotes = !inQuotes;
+                else if (line[i] === ',' && !inQuotes) {
+                    let field = line.substring(start, i).trim();
+                    if (field.startsWith('"') && field.endsWith('"')) {
+                        field = field.substring(1, field.length - 1).replace(/""/g, '"');
+                    }
+                    result.push(field);
+                    start = i + 1;
+                }
+            }
+            let lastField = line.substring(start).trim();
+            if (lastField.startsWith('"') && lastField.endsWith('"')) {
+                lastField = lastField.substring(1, lastField.length - 1).replace(/""/g, '"');
+            }
+            result.push(lastField);
+            return result;
+        }
+
+        // --- Логика фильтрации ---
+        function populateFilterOptions() {
+            const getUnique = (key) => ['Все', ...new Set(state.allBooks.map(b => b[key]).filter(Boolean))].sort();
+            
+            const renderOptions = (selectEl, options) => {
+                selectEl.innerHTML = options.map(opt => 
+                    `<option value="${opt}">${opt === 'Все' && selectEl.id === 'status-select' ? 'Все статусы' : opt}</option>`
+                ).join('');
+            };
+
+            renderOptions(els.categorySelect, getUnique('category'));
+            renderOptions(els.statusSelect, getUnique('status'));
+            renderOptions(els.authorSelect, getUnique('author'));
+        }
+
+        function applyFilters() {
+            const { search, category, status, author } = state.filters;
+            const term = search.toLowerCase();
+
+            state.filteredBooks = state.allBooks.filter(book => {
+                const matchesSearch = !term || 
+                    book.title.toLowerCase().includes(term) ||
+                    book.author.toLowerCase().includes(term);
+                
+                const matchesCategory = category === 'Все' || book.category === category;
+                const matchesStatus = status === 'Все' || book.status === status;
+                const matchesAuthor = author === 'Все' || book.author === author;
+
+                return matchesSearch && matchesCategory && matchesStatus && matchesAuthor;
+            });
+
+            // Update UI Counters
+            const activeCount = [category, status, author].filter(v => v !== 'Все').length;
+            if (activeCount > 0) {
+                els.activeFiltersBadge.textContent = activeCount;
+                els.activeFiltersBadge.classList.remove('hidden');
+                els.toggleFiltersBtn.classList.replace('bg-white', 'bg-ios-blue');
+                els.toggleFiltersBtn.classList.replace('text-gray-700', 'text-white');
+            } else {
+                els.activeFiltersBadge.classList.add('hidden');
+                els.toggleFiltersBtn.classList.replace('bg-ios-blue', 'bg-white');
+                els.toggleFiltersBtn.classList.replace('text-white', 'text-gray-700');
+            }
+
+            renderBooks();
+        }
+
+        // --- Рендеринг ---
+        function renderBooks() {
+            if (state.filteredBooks.length === 0) {
+                els.booksContainer.innerHTML = '';
+                els.emptyState.classList.remove('hidden');
+                return;
+            }
+
+            els.emptyState.classList.add('hidden');
+            els.booksContainer.innerHTML = state.filteredBooks.map((book, index) => {
+                let statusClass = 'bg-gray-100 text-gray-600';
+                if (book.status === 'В наличии') statusClass = 'bg-green-100 text-green-700';
+                else if (book.status === 'Читают') statusClass = 'bg-orange-100 text-orange-700';
+                else if (book.status === 'Недоступно') statusClass = 'bg-red-100 text-red-700';
+
+                return `
+                <div class="book-card group bg-white rounded-xl shadow-sm p-4 flex flex-row items-center active:scale-[0.98] transition-all duration-200 cursor-pointer border border-gray-100/50" data-index="${index}">
+                    <div class="relative w-20 h-28 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-100">
+                        ${book.coverUrl ? 
+                            `<img src="${book.coverUrl}" alt="${book.title}" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentNode.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-gray-400\'><i data-lucide=\'image-off\' class=\'w-6 h-6\'></i></div>'; lucide.createIcons();">` : 
+                            `<div class="w-full h-full flex flex-col items-center justify-center text-gray-400 p-2 text-center"><i data-lucide="image-off" class="w-6 h-6 mb-1"></i></div>`
+                        }
+                    </div>
+                    <div class="flex-1 ml-4 flex flex-col h-28 justify-between py-0.5">
+                        <div>
+                            <h3 class="font-bold text-gray-900 text-base leading-tight line-clamp-2 mb-1">${book.title || 'Без названия'}</h3>
+                            <p class="text-sm text-ios-subtext line-clamp-1 mb-2">${book.author || 'Автор неизвестен'}</p>
+                        </div>
+                        <div class="flex items-end justify-between mt-auto">
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md truncate max-w-[140px]">${book.category}</span>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${statusClass}">${book.status}</span>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            // Re-initialize icons for new elements
+            lucide.createIcons();
+
+            // Add Click Listeners
+            document.querySelectorAll('.book-card').forEach((card, idx) => {
+                card.addEventListener('click', () => {
+                    const book = state.filteredBooks[idx];
+                    openModal(book);
+                });
+            });
+        }
+
+        // --- Модальное окно ---
+        function openModal(book) {
+            state.selectedBook = book;
+            
+            // Populate Data
+            els.modalTitle.textContent = book.title;
+            els.modalAuthor.textContent = book.author;
+            els.modalDescription.textContent = book.description || 'Описание отсутствует.';
+            
+            // Image Logic
+            els.modalImage.style.display = 'block';
+            els.modalImagePlaceholder.classList.add('hidden');
+            if (book.coverUrl) {
+                els.modalImage.src = book.coverUrl;
+                els.modalImage.onclick = () => openFullscreen(book.coverUrl);
+                els.modalImage.onerror = () => {
+                    els.modalImage.style.display = 'none';
+                    els.modalImagePlaceholder.classList.remove('hidden');
+                };
+            } else {
+                els.modalImage.style.display = 'none';
+                els.modalImagePlaceholder.classList.remove('hidden');
+            }
+
+            // Status Logic
+            const isAvailable = book.status === 'В наличии';
+            const isReading = book.status === 'Читают';
+            
+            let statusClass = 'bg-gray-100 text-gray-600';
+            let btnText = 'Недоступно';
+            let btnClass = 'bg-gray-200 text-gray-400 cursor-not-allowed';
+            let btnDisabled = true;
+
+            if (isAvailable) {
+                statusClass = 'bg-green-100 text-green-700';
+                btnText = 'Хочу почитать';
+                btnClass = 'bg-ios-blue text-white active:scale-[0.98] hover:bg-blue-600';
+                btnDisabled = false;
+            } else if (isReading) {
+                statusClass = 'bg-orange-100 text-orange-700';
+                btnText = 'Сейчас читают';
+            } else {
+                statusClass = 'bg-red-100 text-red-700';
+            }
+
+            els.modalStatusBadge.className = `inline-block px-3 py-1.5 rounded-full text-sm font-semibold tracking-wide uppercase mb-4 ${statusClass}`;
+            els.modalStatusBadge.textContent = book.status;
+            
+            els.modalBtnText.textContent = btnText;
+            els.modalActionBtn.className = `w-full py-5 rounded-xl font-bold text-xl shadow-sm flex items-center justify-center transition-all ${btnClass}`;
+            els.modalActionBtn.disabled = btnDisabled;
+            
+            // Show Modal
+            els.modalBackdrop.classList.remove('hidden');
+            requestAnimationFrame(() => els.modalBackdrop.classList.remove('opacity-0'));
+            
+            els.bookModal.classList.remove('pointer-events-none');
+            els.modalContent.classList.remove('translate-y-full');
+            
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            state.selectedBook = null;
+            
+            els.modalBackdrop.classList.add('opacity-0');
+            els.modalContent.classList.add('translate-y-full');
+            
+            setTimeout(() => {
+                els.modalBackdrop.classList.add('hidden');
+                els.bookModal.classList.add('pointer-events-none');
+                document.body.style.overflow = '';
+            }, 300);
+        }
+
+        function handleAction() {
+            if (!state.selectedBook || state.selectedBook.status !== 'В наличии') return;
+            
+            // Формируем сообщение для Telegram
+            const message = `Привет, могу ли я взять почитать твою книгу **${state.selectedBook.title}** (${state.selectedBook.author})?`;
+            const encodedMessage = encodeURIComponent(message);
+            const url = `https://t.me/${state.selectedBook.ownerUsername}?text=${encodedMessage}`;
+            
+            if (window.Telegram?.WebApp?.openTelegramLink) {
+                window.Telegram.WebApp.openTelegramLink(url);
+            } else {
+                window.open(url, '_blank');
+            }
+        }
+
+        function handleAuthorClick(e) {
+            e.stopPropagation();
+            if(!state.selectedBook) return;
+            const author = state.selectedBook.author;
+            
+            // Close modal first
+            closeModal();
+            
+            // Wait for modal transition to avoid jarring effect, then apply filter
+            setTimeout(() => {
+                state.filters.search = '';
+                state.filters.category = 'Все';
+                state.filters.status = 'Все';
+                state.filters.author = author;
+                
+                // Update UI elements
+                els.searchInput.value = '';
+                els.clearSearchBtn.classList.add('hidden');
+                els.authorSelect.value = author;
+                els.categorySelect.value = 'Все';
+                els.statusSelect.value = 'Все';
+                
+                applyFilters();
+                
+                // Optional: Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 300);
+        }
+
+        function openFullscreen(url) {
+            els.fullscreenImage.src = url;
+            els.fullscreenOverlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeFullscreen(e) {
+            if (e) e.stopPropagation();
+            els.fullscreenOverlay.classList.add('hidden');
+            if (!state.selectedBook) {
+                document.body.style.overflow = '';
+            }
+        }
+
+        // --- Event Listeners ---
+        
+        // Search
+        els.searchInput.addEventListener('input', (e) => {
+            state.filters.search = e.target.value;
+            els.clearSearchBtn.classList.toggle('hidden', !e.target.value);
+            applyFilters();
+        });
+        
+        els.clearSearchBtn.addEventListener('click', () => {
+            state.filters.search = '';
+            els.searchInput.value = '';
+            els.clearSearchBtn.classList.add('hidden');
+            applyFilters();
+        });
+
+        // Filters UI
+        els.toggleFiltersBtn.addEventListener('click', () => {
+            els.filtersPanel.classList.toggle('hidden');
+        });
+
+        // Selects
+        [els.categorySelect, els.statusSelect, els.authorSelect].forEach(select => {
+            select.addEventListener('change', (e) => {
+                const type = e.target.id.split('-')[0]; // category, status, author
+                state.filters[type] = e.target.value;
+                applyFilters();
+            });
+        });
+
+        els.resetFiltersBtn.addEventListener('click', () => {
+            state.filters.category = 'Все';
+            state.filters.status = 'Все';
+            state.filters.author = 'Все';
+            state.filters.search = '';
+            els.searchInput.value = '';
+            
+            els.categorySelect.value = 'Все';
+            els.statusSelect.value = 'Все';
+            els.authorSelect.value = 'Все';
+            
+            els.filtersPanel.classList.add('hidden');
+            applyFilters();
+        });
+
+        // Modal
+        els.closeModalBtn.addEventListener('click', closeModal);
+        els.modalBackdrop.addEventListener('click', closeModal);
+        els.modalActionBtn.addEventListener('click', handleAction);
+        els.modalAuthorBtn.addEventListener('click', handleAuthorClick);
+
+        // Fullscreen
+        els.fullscreenOverlay.addEventListener('click', closeFullscreen);
+        els.closeFullscreenBtn.addEventListener('click', closeFullscreen);
+
+        // Start
+        init();
+    </script>
 </body>
 </html>
