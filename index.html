@@ -555,7 +555,7 @@
             if (!state.selectedBook || state.selectedBook.status !== 'В наличии') return;
             
             // Формируем сообщение для Telegram
-            const message = `Привет, могу ли я взять почитать твою книгу **${state.selectedBook.title}** (${state.selectedBook.author})?`;
+            const message = `Привет, могу ли я взять почитать твою книгу "**${state.selectedBook.title}**" (${state.selectedBook.author})?`;
             const encodedMessage = encodeURIComponent(message);
             const url = `https://t.me/${state.selectedBook.ownerUsername}?text=${encodedMessage}`;
             
