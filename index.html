@@ -3,669 +3,1055 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Книжный Клуб</title>
-    
-    <!-- Telegram WebApp -->
+    <title>Book Sharing Club</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Icons (Lucide) -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- Tailwind Config -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
-                    },
-                    colors: {
-                        ios: {
-                            bg: '#F2F2F6',
-                            card: '#FFFFFF',
-                            text: '#000000',
-                            subtext: '#8E8E93',
-                            blue: '#007AFF',
-                            red: '#FF3B30',
-                            green: '#34C759',
-                            orange: '#FF9500',
-                            separator: '#C6C6C8',
-                        }
-                    }
-                },
-            },
-        }
-    </script>
-
     <style>
-        /* Скрытие скроллбара */
-        .no-scrollbar::-webkit-scrollbar {
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --hint-color: #999999;
+            --link-color: #2481cc;
+            --button-color: #2481cc;
+            --button-text-color: #ffffff;
+            --secondary-bg-color: #f4f4f5;
+            --header-bg-color: #ffffff;
+            --card-bg-color: #ffffff;
+            --separator-color: #e0e0e0;
+            --modal-overlay-color: rgba(0, 0, 0, 0.5);
+            
+            /* Badges */
+            --badge-bg: #e0f2f1;
+            --badge-text: #00695c;
+            --status-available-bg: #e8f5e9;
+            --status-available-text: #2e7d32;
+            --status-busy-bg: #ffebee;
+            --status-busy-text: #c62828;
+        }
+
+        body.dark-mode {
+            --bg-color: #17212b;
+            --text-color: #f5f5f5;
+            --hint-color: #708499;
+            --link-color: #64b5ef;
+            --button-color: #5288c1;
+            --button-text-color: #ffffff;
+            --secondary-bg-color: #0f161e;
+            --header-bg-color: #17212b;
+            --card-bg-color: #17212b;
+            --separator-color: #1c2a38;
+            --modal-overlay-color: rgba(0, 0, 0, 0.7);
+
+            --badge-bg: #2c3e50;
+            --badge-text: #80cbc4;
+            --status-available-bg: #1b5e20;
+            --status-available-text: #a5d6a7;
+            --status-busy-bg: #b71c1c;
+            --status-busy-text: #ef9a9a;
+        }
+
+        /* Global Reset & Scrollbar hiding */
+        * {
+            scrollbar-width: none; /* Firefox */
+        }
+        
+        ::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+
+        body {
+            background-color: var(--secondary-bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Layout */
+        #app {
+            padding-bottom: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Search Bar & Filters */
+        .search-container {
+            position: sticky;
+            top: 0;
+            background-color: var(--header-bg-color);
+            padding: 12px 16px;
+            z-index: 100;
+            box-shadow: 0 1px 0 var(--separator-color);
+        }
+
+        .search-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: none;
+            background-color: var(--secondary-bg-color);
+            color: var(--text-color);
+            font-size: 16px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        
+        .search-input::placeholder {
+            color: var(--hint-color);
+        }
+
+        .filter-btn {
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            color: var(--link-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .filter-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        /* Book List */
+        .book-list {
+            padding: 16px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .book-card {
+            background-color: var(--card-bg-color);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            gap: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: transform 0.1s;
+            position: relative;
+            /* Adaptive height */
+            height: auto; 
+            min-height: 100px;
+            align-items: stretch; /* Stretch children */
+        }
+
+        .book-card:active {
+            transform: scale(0.98);
+        }
+
+        .book-cover {
+            width: 66px; 
+            height: 100px;
+            object-fit: cover;
+            border-radius: 6px;
+            background-color: var(--secondary-bg-color);
+            flex-shrink: 0;
+            align-self: flex-start; /* Do not stretch image height if card grows */
+        }
+
+        .book-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+            justify-content: flex-start;
+        }
+
+        .book-title {
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+            margin: 0 0 4px 0;
+            /* Allow text to wrap and grow */
+            display: block;
+            overflow: visible;
+            white-space: normal;
+        }
+
+        .book-author {
+            color: var(--hint-color);
+            font-size: 13px;
+            margin: 0 0 8px 0;
+            /* Allow text to wrap */
+            white-space: normal;
+            line-height: 1.4;
+        }
+
+        /* New footer within card to align status and categories */
+        .card-bottom-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: auto; /* Push to bottom */
+            gap: 8px;
+            width: 100%;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .status-available {
+            background-color: var(--status-available-bg);
+            color: var(--status-available-text);
+        }
+        
+        .status-busy {
+            background-color: var(--status-busy-bg);
+            color: var(--status-busy-text);
+        }
+
+        .categories-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            flex: 1;
+        }
+
+        .category-badge {
+            background-color: var(--badge-bg);
+            color: var(--badge-text);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        /* Detail View */
+        #detail-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-color);
+            z-index: 200;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            overflow-y: auto;
             display: none;
         }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        
-        body {
-            background-color: #F2F2F6;
-            -webkit-font-smoothing: antialiased;
-            overscroll-behavior-y: none; /* Предотвращает "оттягивание" страницы на iOS */
+
+        #detail-view.visible {
+            transform: translateX(0);
+            display: block;
         }
 
-        /* Анимации */
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        .detail-header {
+            position: sticky;
+            top: 0;
+            background-color: transparent;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .back-button {
+            background: rgba(128, 128, 128, 0.1);
+            backdrop-filter: blur(10px);
+            border: none;
+            color: var(--text-color);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
+        .back-button svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .detail-content {
+            padding: 0 16px 40px 16px;
+        }
+
+        .detail-main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .detail-cover {
+            width: 160px;
+            height: 240px;
+            object-fit: cover;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .detail-title {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin: 0 0 12px 0;
+            line-height: 1.2;
+        }
+
+        .detail-author-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+        
+        .detail-author-chip {
+            background-color: var(--secondary-bg-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            border: 1px solid var(--separator-color);
+        }
+        
+        .detail-author-chip:active {
+            opacity: 0.7;
+        }
+
+        /* Detail Meta Row: Categories Left, Status Right */
+        .detail-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            margin-bottom: 20px;
+            gap: 16px;
+        }
+
+        .detail-cats-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .detail-cat-badge {
+            background-color: var(--badge-bg);
+            color: var(--badge-text);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 14px; /* Increased size */
+            font-weight: 500;
+        }
+
+        .detail-status-badge {
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 14px; /* Increased size */
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--hint-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .detail-text {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .reviews-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .review-item {
+            background-color: var(--secondary-bg-color);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-style: italic;
+        }
+
+        .action-button {
+            display: block;
+            background-color: var(--button-color);
+            color: var(--button-text-color);
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            margin: 24px 0;
+            text-align: center;
+        }
+        
+        .action-button:active {
+            opacity: 0.9;
+            transform: scale(0.99);
+        }
+
+        .loading, .error {
+            text-align: center;
+            padding: 40px;
+            color: var(--hint-color);
+        }
+
+        /* Filter Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--modal-overlay-color);
+            z-index: 300;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        
+        .modal-overlay.visible {
+            display: flex;
+        }
+
+        .filter-modal {
+            background-color: var(--bg-color);
+            width: 100%;
+            max-width: 600px;
+            border-radius: 20px 20px 0 0;
+            padding: 24px 16px;
+            box-sizing: border-box;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s ease-out;
+        }
+
         @keyframes slideUp {
             from { transform: translateY(100%); }
             to { transform: translateY(0); }
         }
 
-        .animate-fade-in {
-            animation: fadeIn 0.3s ease-out forwards;
+        .filter-content {
+            overflow-y: auto;
+            flex: 1;
         }
 
-        .animate-slide-up {
-            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .filter-group {
+            margin-bottom: 20px;
         }
-        
-        /* Стили для лоадера */
-        .spinner {
-            border: 3px solid rgba(0, 122, 255, 0.1);
-            border-left-color: #007AFF;
-            border-radius: 50%;
-            width: 48px;
-            height: 48px;
-            animation: spin 1s linear infinite;
+
+        .filter-label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-color);
         }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        .filter-options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            background-color: var(--secondary-bg-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            user-select: none;
+        }
+
+        .checkbox-label input {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--button-color);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid var(--separator-color);
+        }
+
+        .btn-apply {
+            flex: 1;
+            background-color: var(--button-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-reset {
+            flex: 1;
+            background-color: var(--secondary-bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--separator-color);
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
         }
     </style>
 </head>
-<body class="text-gray-900 pb-10 min-h-screen">
-
-    <!-- Экран загрузки -->
-    <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-ios-bg text-ios-subtext">
-        <div class="spinner mb-4"></div>
-        <p class="font-medium text-lg">Загрузка библиотеки...</p>
-    </div>
-
-    <!-- Экран ошибки -->
-    <div id="error-screen" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-ios-bg p-6 text-center">
-        <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6">
-            <i data-lucide="book-open" class="w-10 h-10 text-ios-red"></i>
+<body>
+    <div id="app">
+        <!-- Main List View -->
+        <div class="container" id="list-view">
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <input type="text" id="search-input" class="search-input" placeholder="Поиск...">
+                    <button class="filter-btn" onclick="openFilters()">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="book-list" class="book-list">
+                <!-- Book items will be injected here -->
+                <div class="loading">Загрузка книг...</div>
+            </div>
         </div>
-        <h2 class="text-2xl font-bold text-gray-900 mb-2">Ой!</h2>
-        <p id="error-message" class="text-lg text-gray-600 mb-8"></p>
-        <button onclick="window.location.reload()" class="px-8 py-4 bg-ios-blue text-white rounded-xl font-semibold shadow-sm active:scale-95 transition-transform text-lg">
-            Попробовать снова
-        </button>
-    </div>
 
-    <!-- Основной контент -->
-    <div id="main-content" class="hidden">
+        <!-- Detail View -->
+        <div id="detail-view">
+            <div class="detail-header">
+                <button class="back-button" onclick="closeDetail()">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="detail-content" id="detail-content">
+                <!-- Detail content injected here -->
+            </div>
+        </div>
         
-        <!-- Хедер и Фильтры -->
-        <div class="sticky top-0 z-20 bg-ios-bg/95 backdrop-blur-md border-b border-ios-separator/50 pb-2 transition-all">
-            <div class="px-4 py-4 max-w-2xl mx-auto">
-                <h1 class="text-4xl font-bold text-gray-900 mb-5 tracking-tight">Библиотека</h1>
+        <!-- Filter Modal -->
+        <div id="filter-modal-overlay" class="modal-overlay" onclick="closeFiltersOnOverlay(event)">
+            <div class="filter-modal">
+                <h3 style="margin-top:0; margin-bottom:16px;">Фильтры</h3>
                 
-                <!-- Поисковая строка и Кнопка фильтра -->
-                <div class="flex gap-2 mb-3">
-                    <div class="relative flex-1">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
+                <div class="filter-content">
+                    <div class="filter-group">
+                        <label class="filter-label">Статус</label>
+                        <div class="filter-options-grid">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="filter-status" value="В наличии"> В наличии
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="filter-status" value="На руках"> На руках
+                            </label>
                         </div>
-                        <input type="text" id="search-input" placeholder="Поиск по названию, автору..." 
-                            class="block w-full pl-10 pr-3 py-3 border-none rounded-xl bg-gray-200/50 text-gray-900 text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ios-blue/50 transition-all">
-                        <button id="clear-search" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
-                            <i data-lucide="x" class="w-5 h-5"></i>
-                        </button>
                     </div>
 
-                    <!-- Кнопка фильтров -->
-                    <button id="toggle-filters-btn" class="flex-none w-12 h-12 flex items-center justify-center bg-white rounded-xl shadow-sm border border-gray-100 text-gray-700 transition-colors relative">
-                        <i data-lucide="filter" class="w-6 h-6"></i>
-                        <span id="active-filters-badge" class="hidden absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-ios-blue text-[11px] text-white ring-2 ring-white">0</span>
-                    </button>
-                </div>
-
-                <!-- Панель фильтров -->
-                <div id="filters-panel" class="hidden mt-3 p-4 bg-white rounded-xl shadow-sm border border-gray-100 animate-fade-in">
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Категория</label>
-                            <select id="category-select" class="block w-full py-2.5 px-3 border border-gray-200 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-ios-blue/50 text-base text-gray-700"></select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Статус</label>
-                            <select id="status-select" class="block w-full py-2.5 px-3 border border-gray-200 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-ios-blue/50 text-base text-gray-700"></select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">Автор</label>
-                            <select id="author-select" class="block w-full py-2.5 px-3 border border-gray-200 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-ios-blue/50 text-base text-gray-700"></select>
+                    <div class="filter-group">
+                        <label class="filter-label">Категории</label>
+                        <div class="filter-options-grid" id="filter-categories-container">
+                            <!-- Injected JS -->
                         </div>
                     </div>
-                    <div class="mt-4 flex justify-end">
-                        <button id="reset-filters" class="text-sm text-ios-red font-medium hover:underline">Сбросить</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Список книг -->
-        <main class="px-4 pt-4 max-w-2xl mx-auto pb-20">
-            <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 text-ios-subtext">
-                <i data-lucide="book-open" class="w-16 h-16 mb-4 opacity-20"></i>
-                <p class="text-lg">По вашему запросу ничего не найдено.</p>
-            </div>
-            
-            <div id="books-container" class="flex flex-col gap-4">
-                <!-- Сюда будут вставляться карточки книг через JS -->
-            </div>
-        </main>
-    </div>
-
-    <!-- Модальное окно -->
-    <div id="modal-backdrop" class="hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity opacity-0"></div>
-    <div id="book-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
-        <div id="modal-content" class="w-full max-w-lg bg-white sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform translate-y-full transition-transform duration-300 pointer-events-auto">
-            
-            <!-- Картинка в модальном окне -->
-            <div class="relative h-64 sm:h-72 w-full flex-shrink-0 bg-gray-100 group">
-                <button id="close-modal" class="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-black/30 transition-colors">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-                
-                <img id="modal-image" src="" alt="Book Cover" class="w-full h-full object-cover cursor-zoom-in active:scale-[0.98] transition-transform">
-                
-                <div id="modal-image-placeholder" class="hidden absolute inset-0 flex flex-col items-center justify-center text-gray-400">
-                    <i data-lucide="image-off" class="w-16 h-16 mb-2"></i>
-                    <span class="text-base">Нет обложки</span>
-                </div>
-            </div>
-
-            <!-- Контент модального окна -->
-            <div class="flex-1 overflow-y-auto overflow-x-hidden p-6 bg-white">
-                <div class="mb-6">
-                    <span id="modal-status-badge" class="inline-block px-3 py-1.5 rounded-full text-sm font-semibold tracking-wide uppercase mb-4"></span>
                     
-                    <h2 id="modal-title" class="text-3xl font-bold text-gray-900 leading-tight mb-2"></h2>
-                    
-                    <button id="modal-author-btn" class="flex items-center text-ios-blue font-medium text-xl mb-5 hover:underline focus:outline-none">
-                        <i data-lucide="user" class="w-5 h-5 mr-2"></i>
-                        <span id="modal-author"></span>
-                    </button>
-
-                    <div id="modal-description" class="prose text-gray-700 leading-relaxed whitespace-pre-wrap text-base"></div>
+                    <div class="filter-group">
+                        <label class="filter-label">Авторы</label>
+                        <div class="filter-options-grid" id="filter-authors-container">
+                            <!-- Injected JS -->
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Футер с кнопкой -->
-            <div class="p-4 border-t border-gray-100 bg-white/95 backdrop-blur pb-8 sm:pb-4">
-                <button id="modal-action-btn" class="w-full py-5 rounded-xl font-bold text-xl shadow-sm flex items-center justify-center transition-all">
-                    <span id="modal-btn-text"></span>
-                    <i data-lucide="external-link" class="w-6 h-6 ml-2"></i>
-                </button>
+                <div class="filter-actions">
+                    <button class="btn-reset" onclick="resetFilters()">Сбросить</button>
+                    <button class="btn-apply" onclick="applyFilters()">Применить</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Полноэкранный просмотр изображения -->
-    <div id="fullscreen-overlay" class="hidden fixed inset-0 z-[60] bg-black/95 flex items-center justify-center animate-fade-in cursor-pointer">
-        <button id="close-fullscreen" class="absolute top-4 right-4 z-20 w-12 h-12 flex items-center justify-center bg-white/20 rounded-full text-white hover:bg-white/30 backdrop-blur-sm">
-            <i data-lucide="x" class="w-7 h-7"></i>
-        </button>
-        <img id="fullscreen-image" src="" class="max-w-full max-h-full p-2 object-contain" alt="Fullscreen cover">
-    </div>
-
-    <!-- JavaScript Logic -->
     <script>
-        // --- Константы и Состояние ---
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/15tlzACTh2vziwt6ibdlqe__DhaO-FU7Lx0WUgOuvpr8/export?format=csv';
-
+        // --- Configuration ---
+        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRx_ryhQ0Ff05OaHn2TlGB0xt3cUyFvikMoNzKoFPWtrBVNvZ4Akvor0sjQpe9MeLScNOYxijlkzbVX/pub?output=csv'; 
+        
+        // --- State ---
         const state = {
-            allBooks: [],
+            books: [],
             filteredBooks: [],
-            filters: {
-                search: '',
-                category: 'Все',
-                status: 'Все',
-                author: 'Все'
+            selectedBook: null,
+            searchTerm: '',
+            activeFilters: {
+                categories: [],
+                authors: [],
+                statuses: []
             },
-            selectedBook: null
+            uniqueCategories: new Set(),
+            uniqueAuthors: new Set()
         };
 
-        // --- DOM Элементы ---
-        const els = {
-            loadingScreen: document.getElementById('loading-screen'),
-            errorScreen: document.getElementById('error-screen'),
-            errorMessage: document.getElementById('error-message'),
-            mainContent: document.getElementById('main-content'),
-            
-            booksContainer: document.getElementById('books-container'),
-            emptyState: document.getElementById('empty-state'),
-            
-            searchInput: document.getElementById('search-input'),
-            clearSearchBtn: document.getElementById('clear-search'),
-            
-            toggleFiltersBtn: document.getElementById('toggle-filters-btn'),
-            filtersPanel: document.getElementById('filters-panel'),
-            activeFiltersBadge: document.getElementById('active-filters-badge'),
-            categorySelect: document.getElementById('category-select'),
-            statusSelect: document.getElementById('status-select'),
-            authorSelect: document.getElementById('author-select'),
-            resetFiltersBtn: document.getElementById('reset-filters'),
-            
-            modalBackdrop: document.getElementById('modal-backdrop'),
-            bookModal: document.getElementById('book-modal'),
-            modalContent: document.getElementById('modal-content'),
-            closeModalBtn: document.getElementById('close-modal'),
-            
-            modalImage: document.getElementById('modal-image'),
-            modalImagePlaceholder: document.getElementById('modal-image-placeholder'),
-            modalStatusBadge: document.getElementById('modal-status-badge'),
-            modalTitle: document.getElementById('modal-title'),
-            modalAuthor: document.getElementById('modal-author'),
-            modalAuthorBtn: document.getElementById('modal-author-btn'),
-            modalDescription: document.getElementById('modal-description'),
-            modalActionBtn: document.getElementById('modal-action-btn'),
-            modalBtnText: document.getElementById('modal-btn-text'),
+        // --- Initialization ---
+        const tg = window.Telegram.WebApp;
 
-            fullscreenOverlay: document.getElementById('fullscreen-overlay'),
-            fullscreenImage: document.getElementById('fullscreen-image'),
-            closeFullscreenBtn: document.getElementById('close-fullscreen'),
-        };
-
-        // --- Инициализация ---
-        async function init() {
-            // Telegram WebApp Setup
-            if (window.Telegram?.WebApp) {
-                window.Telegram.WebApp.ready();
-                window.Telegram.WebApp.expand();
-                window.Telegram.WebApp.setHeaderColor('#F2F2F6');
-                window.Telegram.WebApp.setBackgroundColor('#F2F2F6');
+        function init() {
+            tg.expand();
+            
+            // Theme handling
+            if (tg.colorScheme === 'dark') {
+                document.body.classList.add('dark-mode');
             }
+            tg.onEvent('themeChanged', function() {
+                if (tg.colorScheme === 'dark') {
+                    document.body.classList.add('dark-mode');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                }
+            });
 
+            fetchBooks();
+            
+            // Search listener
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                state.searchTerm = e.target.value;
+                filterBooks();
+                renderBookList();
+            });
+        }
+
+        // --- Data Fetching & Parsing ---
+        async function fetchBooks() {
             try {
-                const books = await fetchBooks();
-                state.allBooks = books;
-                state.filteredBooks = books;
-                
-                populateFilterOptions();
-                renderBooks();
-                
-                els.loadingScreen.classList.add('hidden');
-                els.mainContent.classList.remove('hidden');
-                
-                // Инициализация иконок
-                lucide.createIcons();
-            } catch (err) {
-                console.error(err);
-                els.loadingScreen.classList.add('hidden');
-                els.errorScreen.classList.remove('hidden');
-                els.errorMessage.textContent = 'Не удалось загрузить данные. Проверьте интернет соединение.';
+                const response = await fetch(GOOGLE_SHEET_CSV_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const csvText = await response.text();
+                parseCSV(csvText);
+            } catch (error) {
+                console.warn('Fetch failed, using mock data for demonstration:', error);
+                parseCSV(generateMockCSV());
             }
         }
 
-        // --- Сервис данных ---
-        async function fetchBooks() {
-            const response = await fetch(SHEET_URL);
-            if (!response.ok) throw new Error('Network error');
-            const csvText = await response.text();
-            return parseCSV(csvText);
+        function generateMockCSV() {
+            return `Статус,Название,Автор_1,Автор_2,Автор_3,Автор_4,Категория_1,Категория_2,Категория_3,Обложка,Аннотация,Telegram,Читатель,Отзыв_1,Отзыв_2,Отзыв_3,Отзыв_4,Отзыв_5
+В наличии,Гарри Поттер и философский камень,Дж.К. Роулинг,,,,Фэнтези,Приключения,,https://m.media-amazon.com/images/I/81q77Q39nEL._AC_UF1000,1000_QL80_.jpg,Жизнь десятилетнего Гарри Поттера нельзя назвать сладкой: родители умерли, едва ему исполнился год...,user1,,Отличная книга!,,
+На руках,Искусство программирования,Дональд Кнут,,,,Компьютеры,Наука,Образование,https://m.media-amazon.com/images/I/41MSw6-7JBL._AC_UF1000,1000_QL80_.jpg,Фундаментальная монография...,user2,reader_bob,Сложно но круто,Классика,,,
+В наличии,Благие знамения,Терри Пратчетт,Нил Гейман,,,Фэнтези,Юмор,,https://m.media-amazon.com/images/I/81X4R7QhFkL._AC_UF1000,1000_QL80_.jpg,Конец света близок...,user3,,Смешно до слез,Обожаю Пратчетта,Гейман гений,,
+`;
         }
 
         function parseCSV(text) {
-            const lines = text.split('\n');
-            if (lines.length < 2) return [];
-
-            const headers = parseCSVLine(lines[0]);
-            const mapIndices = {};
-            headers.forEach((h, i) => mapIndices[h.trim()] = i);
-
-            const books = [];
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
+            const rows = [];
+            let row = [];
+            let inQuote = false;
+            let currentCell = '';
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i+1];
                 
-                const cols = parseCSVLine(line);
-                const getCol = (key) => {
-                    const idx = mapIndices[key];
-                    return (idx !== undefined && cols[idx]) ? cols[idx] : '';
-                };
-
-                books.push({
-                    title: getCol('Название'),
-                    author: getCol('Автор'),
-                    category: getCol('Категория'),
-                    status: getCol('Статус'),
-                    coverUrl: getCol('Обложка'),
-                    ownerUsername: getCol('Telegram').replace('@', ''),
-                    description: getCol('Аннотация')
-                });
-            }
-            return books;
-        }
-
-        function parseCSVLine(line) {
-            const result = [];
-            let start = 0;
-            let inQuotes = false;
-            for (let i = 0; i < line.length; i++) {
-                if (line[i] === '"') inQuotes = !inQuotes;
-                else if (line[i] === ',' && !inQuotes) {
-                    let field = line.substring(start, i).trim();
-                    if (field.startsWith('"') && field.endsWith('"')) {
-                        field = field.substring(1, field.length - 1).replace(/""/g, '"');
+                if (char === '"') {
+                    if (inQuote && nextChar === '"') {
+                        currentCell += '"';
+                        i++;
+                    } else {
+                        inQuote = !inQuote;
                     }
-                    result.push(field);
-                    start = i + 1;
+                } else if (char === ',' && !inQuote) {
+                    row.push(currentCell.trim());
+                    currentCell = '';
+                } else if ((char === '\r' || char === '\n') && !inQuote) {
+                    if (currentCell || row.length > 0) {
+                        row.push(currentCell.trim());
+                        if (row.length > 0) rows.push(row);
+                        row = [];
+                        currentCell = '';
+                    }
+                    if (char === '\r' && nextChar === '\n') i++;
+                } else {
+                    currentCell += char;
                 }
             }
-            let lastField = line.substring(start).trim();
-            if (lastField.startsWith('"') && lastField.endsWith('"')) {
-                lastField = lastField.substring(1, lastField.length - 1).replace(/""/g, '"');
+            if (currentCell || row.length > 0) {
+                row.push(currentCell.trim());
+                rows.push(row);
             }
-            result.push(lastField);
-            return result;
-        }
 
-        // --- Логика фильтрации ---
-        function populateFilterOptions() {
-            const getUnique = (key) => ['Все', ...new Set(state.allBooks.map(b => b[key]).filter(Boolean))].sort();
+            if (rows.length === 0) return;
+
+            const headers = rows[0].map(h => h.toLowerCase().trim());
+            const dataRows = rows.slice(1);
+            const getIdx = (name) => headers.indexOf(name.toLowerCase());
             
-            const renderOptions = (selectEl, options) => {
-                selectEl.innerHTML = options.map(opt => 
-                    `<option value="${opt}">${opt === 'Все' && selectEl.id === 'status-select' ? 'Все статусы' : opt}</option>`
-                ).join('');
-            };
-
-            renderOptions(els.categorySelect, getUnique('category'));
-            renderOptions(els.statusSelect, getUnique('status'));
-            renderOptions(els.authorSelect, getUnique('author'));
-        }
-
-        function applyFilters() {
-            const { search, category, status, author } = state.filters;
-            const term = search.toLowerCase();
-
-            state.filteredBooks = state.allBooks.filter(book => {
-                const matchesSearch = !term || 
-                    book.title.toLowerCase().includes(term) ||
-                    book.author.toLowerCase().includes(term);
-                
-                const matchesCategory = category === 'Все' || book.category === category;
-                const matchesStatus = status === 'Все' || book.status === status;
-                const matchesAuthor = author === 'Все' || book.author === author;
-
-                return matchesSearch && matchesCategory && matchesStatus && matchesAuthor;
-            });
-
-            // Update UI Counters
-            const activeCount = [category, status, author].filter(v => v !== 'Все').length;
-            if (activeCount > 0) {
-                els.activeFiltersBadge.textContent = activeCount;
-                els.activeFiltersBadge.classList.remove('hidden');
-                els.toggleFiltersBtn.classList.replace('bg-white', 'bg-ios-blue');
-                els.toggleFiltersBtn.classList.replace('text-gray-700', 'text-white');
-            } else {
-                els.activeFiltersBadge.classList.add('hidden');
-                els.toggleFiltersBtn.classList.replace('bg-ios-blue', 'bg-white');
-                els.toggleFiltersBtn.classList.replace('text-white', 'text-gray-700');
-            }
-
-            renderBooks();
-        }
-
-        // --- Рендеринг ---
-        function renderBooks() {
-            if (state.filteredBooks.length === 0) {
-                els.booksContainer.innerHTML = '';
-                els.emptyState.classList.remove('hidden');
+            if (getIdx('название') === -1) {
+                document.getElementById('book-list').innerHTML = `<div class="error">Ошибка: Неверный формат таблицы.</div>`;
                 return;
             }
 
-            els.emptyState.classList.add('hidden');
-            els.booksContainer.innerHTML = state.filteredBooks.map((book, index) => {
-                let statusClass = 'bg-gray-100 text-gray-600';
-                if (book.status === 'В наличии') statusClass = 'bg-green-100 text-green-700';
-                else if (book.status === 'Читают') statusClass = 'bg-orange-100 text-orange-700';
-                else if (book.status === 'Недоступно') statusClass = 'bg-red-100 text-red-700';
+            const idx = {
+                status: getIdx('статус'),
+                title: getIdx('название'),
+                cover: getIdx('обложка'),
+                desc: getIdx('аннотация'),
+                tg: getIdx('telegram'),
+                reader: getIdx('читатель'),
+                authors: [getIdx('автор_1'), getIdx('автор_2'), getIdx('автор_3'), getIdx('автор_4')],
+                categories: [getIdx('категория_1'), getIdx('категория_2'), getIdx('категория_3')],
+                reviews: [getIdx('отзыв_1'), getIdx('отзыв_2'), getIdx('отзыв_3'), getIdx('отзыв_4'), getIdx('отзыв_5')]
+            };
 
-                return `
-                <div class="book-card group bg-white rounded-xl shadow-sm p-4 flex flex-row items-center active:scale-[0.98] transition-all duration-200 cursor-pointer border border-gray-100/50" data-index="${index}">
-                    <div class="relative w-20 h-28 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-100">
-                        ${book.coverUrl ? 
-                            `<img src="${book.coverUrl}" alt="${book.title}" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentNode.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-gray-400\'><i data-lucide=\'image-off\' class=\'w-6 h-6\'></i></div>'; lucide.createIcons();">` : 
-                            `<div class="w-full h-full flex flex-col items-center justify-center text-gray-400 p-2 text-center"><i data-lucide="image-off" class="w-6 h-6 mb-1"></i></div>`
-                        }
-                    </div>
-                    <div class="flex-1 ml-4 flex flex-col h-28 justify-between py-0.5">
-                        <div>
-                            <h3 class="font-bold text-gray-900 text-base leading-tight line-clamp-2 mb-1">${book.title || 'Без названия'}</h3>
-                            <p class="text-sm text-ios-subtext line-clamp-1 mb-2">${book.author || 'Автор неизвестен'}</p>
-                        </div>
-                        <div class="flex items-end justify-between mt-auto">
-                            <span class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md truncate max-w-[140px]">${book.category}</span>
-                            <span class="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${statusClass}">${book.status}</span>
-                        </div>
-                    </div>
-                </div>
-                `;
-            }).join('');
+            state.books = dataRows.map(row => {
+                const val = (i) => (i >= 0 && row[i]) ? row[i] : '';
+                const authors = idx.authors.map(i => val(i)).filter(s => s !== '');
+                const categories = idx.categories.map(i => val(i)).filter(s => s !== '');
+                const reviews = idx.reviews.map(i => val(i)).filter(s => s !== '');
 
-            // Re-initialize icons for new elements
-            lucide.createIcons();
+                authors.forEach(a => state.uniqueAuthors.add(a));
+                categories.forEach(c => state.uniqueCategories.add(c));
 
-            // Add Click Listeners
-            document.querySelectorAll('.book-card').forEach((card, idx) => {
-                card.addEventListener('click', () => {
-                    const book = state.filteredBooks[idx];
-                    openModal(book);
-                });
+                return {
+                    status: val(idx.status),
+                    title: val(idx.title),
+                    coverUrl: val(idx.cover),
+                    description: val(idx.desc),
+                    ownerUsername: val(idx.tg).replace('@', '').replace('https://t.me/', ''),
+                    reader: val(idx.reader),
+                    authors: authors,
+                    categories: categories,
+                    reviews: reviews
+                };
+            }).filter(book => book.title);
+
+            populateFilterCheckboxes();
+            filterBooks();
+            renderBookList();
+        }
+
+        // --- Filter UI Logic ---
+        function populateFilterCheckboxes() {
+            const catContainer = document.getElementById('filter-categories-container');
+            const authContainer = document.getElementById('filter-authors-container');
+            
+            catContainer.innerHTML = '';
+            authContainer.innerHTML = '';
+
+            Array.from(state.uniqueCategories).sort().forEach(cat => {
+                const label = document.createElement('label');
+                label.className = 'checkbox-label';
+                label.innerHTML = `<input type="checkbox" name="filter-category" value="${escapeHtml(cat)}"> ${escapeHtml(cat)}`;
+                catContainer.appendChild(label);
+            });
+
+            Array.from(state.uniqueAuthors).sort().forEach(auth => {
+                const label = document.createElement('label');
+                label.className = 'checkbox-label';
+                label.innerHTML = `<input type="checkbox" name="filter-author" value="${escapeHtml(auth)}"> ${escapeHtml(auth)}`;
+                authContainer.appendChild(label);
             });
         }
 
-        // --- Модальное окно ---
-        function openModal(book) {
-            state.selectedBook = book;
+        function openFilters() {
+            // Check boxes based on active state
+            document.querySelectorAll('input[name="filter-status"]').forEach(cb => {
+                cb.checked = state.activeFilters.statuses.includes(cb.value);
+            });
+            document.querySelectorAll('input[name="filter-category"]').forEach(cb => {
+                cb.checked = state.activeFilters.categories.includes(cb.value);
+            });
+            document.querySelectorAll('input[name="filter-author"]').forEach(cb => {
+                cb.checked = state.activeFilters.authors.includes(cb.value);
+            });
             
-            // Populate Data
-            els.modalTitle.textContent = book.title;
-            els.modalAuthor.textContent = book.author;
-            els.modalDescription.textContent = book.description || 'Описание отсутствует.';
-            
-            // Image Logic
-            els.modalImage.style.display = 'block';
-            els.modalImagePlaceholder.classList.add('hidden');
-            if (book.coverUrl) {
-                els.modalImage.src = book.coverUrl;
-                els.modalImage.onclick = () => openFullscreen(book.coverUrl);
-                els.modalImage.onerror = () => {
-                    els.modalImage.style.display = 'none';
-                    els.modalImagePlaceholder.classList.remove('hidden');
-                };
-            } else {
-                els.modalImage.style.display = 'none';
-                els.modalImagePlaceholder.classList.remove('hidden');
-            }
-
-            // Status Logic
-            const isAvailable = book.status === 'В наличии';
-            const isReading = book.status === 'Читают';
-            
-            let statusClass = 'bg-gray-100 text-gray-600';
-            let btnText = 'Недоступно';
-            let btnClass = 'bg-gray-200 text-gray-400 cursor-not-allowed';
-            let btnDisabled = true;
-
-            if (isAvailable) {
-                statusClass = 'bg-green-100 text-green-700';
-                btnText = 'Хочу почитать';
-                btnClass = 'bg-ios-blue text-white active:scale-[0.98] hover:bg-blue-600';
-                btnDisabled = false;
-            } else if (isReading) {
-                statusClass = 'bg-orange-100 text-orange-700';
-                btnText = 'Сейчас читают';
-            } else {
-                statusClass = 'bg-red-100 text-red-700';
-            }
-
-            els.modalStatusBadge.className = `inline-block px-3 py-1.5 rounded-full text-sm font-semibold tracking-wide uppercase mb-4 ${statusClass}`;
-            els.modalStatusBadge.textContent = book.status;
-            
-            els.modalBtnText.textContent = btnText;
-            els.modalActionBtn.className = `w-full py-5 rounded-xl font-bold text-xl shadow-sm flex items-center justify-center transition-all ${btnClass}`;
-            els.modalActionBtn.disabled = btnDisabled;
-            
-            // Show Modal
-            els.modalBackdrop.classList.remove('hidden');
-            requestAnimationFrame(() => els.modalBackdrop.classList.remove('opacity-0'));
-            
-            els.bookModal.classList.remove('pointer-events-none');
-            els.modalContent.classList.remove('translate-y-full');
-            
-            document.body.style.overflow = 'hidden';
+            document.getElementById('filter-modal-overlay').classList.add('visible');
         }
 
-        function closeModal() {
+        function closeFilters() {
+            document.getElementById('filter-modal-overlay').classList.remove('visible');
+        }
+
+        function closeFiltersOnOverlay(e) {
+            if (e.target.id === 'filter-modal-overlay') {
+                closeFilters();
+            }
+        }
+
+        function getCheckedValues(name) {
+            return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(cb => cb.value);
+        }
+
+        function applyFilters() {
+            state.activeFilters.statuses = getCheckedValues('filter-status');
+            state.activeFilters.categories = getCheckedValues('filter-category');
+            state.activeFilters.authors = getCheckedValues('filter-author');
+            
+            filterBooks();
+            renderBookList();
+            closeFilters();
+        }
+
+        function resetFilters() {
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            applyFilters();
+        }
+
+        // --- Logic ---
+        function filterBooks() {
+            const term = state.searchTerm.toLowerCase();
+            const { categories, authors, statuses } = state.activeFilters;
+
+            state.filteredBooks = state.books.filter(book => {
+                // 1. Text Search
+                let matchesSearch = false;
+                if (!term) matchesSearch = true;
+                else {
+                    if (book.title.toLowerCase().includes(term)) matchesSearch = true;
+                    else if (book.authors.some(a => a.toLowerCase().includes(term))) matchesSearch = true;
+                    else if (book.categories.some(c => c.toLowerCase().includes(term))) matchesSearch = true;
+                }
+
+                if (!matchesSearch) return false;
+
+                // 2. Strict Filters (Multi-select OR logic within category, AND across types)
+                
+                // Categories: if any selected, book must have at least one
+                if (categories.length > 0) {
+                    const hasCat = book.categories.some(c => categories.includes(c));
+                    if (!hasCat) return false;
+                }
+
+                // Authors: if any selected, book must have at least one
+                if (authors.length > 0) {
+                    const hasAuth = book.authors.some(a => authors.includes(a));
+                    if (!hasAuth) return false;
+                }
+
+                // Status
+                if (statuses.length > 0) {
+                    if (!statuses.includes(book.status)) return false;
+                }
+
+                return true;
+            });
+        }
+
+        function onAuthorClick(authorName) {
+            state.activeFilters.authors = [authorName];
+            // Clear other filters for focused view
+            state.activeFilters.categories = [];
+            state.activeFilters.statuses = [];
+            state.searchTerm = '';
+            document.getElementById('search-input').value = '';
+            
+            filterBooks();
+            renderBookList();
+            closeDetail();
+        }
+
+        function selectBook(book) {
+            state.selectedBook = book;
+            renderBookDetail();
+            document.getElementById('detail-view').classList.add('visible');
+            tg.MainButton.hide();
+        }
+
+        function closeDetail() {
+            document.getElementById('detail-view').classList.remove('visible');
             state.selectedBook = null;
-            
-            els.modalBackdrop.classList.add('opacity-0');
-            els.modalContent.classList.add('translate-y-full');
-            
-            setTimeout(() => {
-                els.modalBackdrop.classList.add('hidden');
-                els.bookModal.classList.add('pointer-events-none');
-                document.body.style.overflow = '';
-            }, 300);
         }
 
         function handleAction() {
-            if (!state.selectedBook || state.selectedBook.status !== 'В наличии') return;
+            if (!state.selectedBook) return;
+            const book = state.selectedBook;
+            const isAvailable = book.status.toLowerCase() === 'в наличии';
             
-            // Формируем сообщение для Telegram
-            const message = `Привет, могу ли я взять почитать твою книгу "**${state.selectedBook.title}**" (${state.selectedBook.author})?`;
+            let message = '';
+            const authorsStr = book.authors.join(', ');
+
+            if (isAvailable) {
+                // Request to borrow
+                message = `Привет, могу ли я взять почитать твою книгу "${book.title}" (${authorsStr})?`;
+            } else {
+                // Request to queue
+                // Bold formatting in Telegram link url usually works with asterisks if client supports it, otherwise just text
+                message = `Привет, я хочу занять очередь на книгу *${book.title}* (${authorsStr})`;
+            }
+
             const encodedMessage = encodeURIComponent(message);
-            const url = `https://t.me/${state.selectedBook.ownerUsername}?text=${encodedMessage}`;
+            const url = `https://t.me/${book.ownerUsername}?text=${encodedMessage}`;
             
-            if (window.Telegram?.WebApp?.openTelegramLink) {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
                 window.Telegram.WebApp.openTelegramLink(url);
             } else {
                 window.open(url, '_blank');
             }
         }
 
-        function handleAuthorClick(e) {
-            e.stopPropagation();
-            if(!state.selectedBook) return;
-            const author = state.selectedBook.author;
-            
-            // Close modal first
-            closeModal();
-            
-            // Wait for modal transition to avoid jarring effect, then apply filter
-            setTimeout(() => {
-                state.filters.search = '';
-                state.filters.category = 'Все';
-                state.filters.status = 'Все';
-                state.filters.author = author;
-                
-                // Update UI elements
-                els.searchInput.value = '';
-                els.clearSearchBtn.classList.add('hidden');
-                els.authorSelect.value = author;
-                els.categorySelect.value = 'Все';
-                els.statusSelect.value = 'Все';
-                
-                applyFilters();
-                
-                // Optional: Scroll to top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }, 300);
-        }
+        // --- Rendering ---
+        function renderBookList() {
+            const container = document.getElementById('book-list');
+            container.innerHTML = '';
 
-        function openFullscreen(url) {
-            els.fullscreenImage.src = url;
-            els.fullscreenOverlay.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeFullscreen(e) {
-            if (e) e.stopPropagation();
-            els.fullscreenOverlay.classList.add('hidden');
-            if (!state.selectedBook) {
-                document.body.style.overflow = '';
+            if (state.filteredBooks.length === 0) {
+                container.innerHTML = '<div class="loading">Книги не найдены</div>';
+                return;
             }
+
+            state.filteredBooks.forEach(book => {
+                const card = document.createElement('div');
+                card.className = 'book-card';
+                
+                const statusClass = book.status.toLowerCase() === 'в наличии' ? 'status-available' : 'status-busy';
+                const authorsStr = book.authors.join(', ');
+                
+                const categoriesHtml = book.categories.map(cat => 
+                    `<span class="category-badge">${escapeHtml(cat)}</span>`
+                ).join('');
+
+                // Layout optimized for mobile expansion:
+                // Cover fixed size left.
+                // Info column stretches right.
+                // Title/Author can wrap.
+                // Footer (Cats + Status) pushes to bottom.
+                card.innerHTML = `
+                    <img src="${book.coverUrl || 'https://via.placeholder.com/80x120?text=No+Cover'}" class="book-cover" alt="Cover" onerror="this.src='https://via.placeholder.com/80x120?text=No+Cover'">
+                    <div class="book-info">
+                        <h3 class="book-title">${escapeHtml(book.title)}</h3>
+                        <p class="book-author">${escapeHtml(authorsStr)}</p>
+                        <div class="card-bottom-row">
+                            <div class="categories-container">${categoriesHtml}</div>
+                            <span class="status-badge ${statusClass}">${escapeHtml(book.status)}</span>
+                        </div>
+                    </div>
+                `;
+                
+                card.onclick = () => selectBook(book);
+                container.appendChild(card);
+            });
         }
 
-        // --- Event Listeners ---
-        
-        // Search
-        els.searchInput.addEventListener('input', (e) => {
-            state.filters.search = e.target.value;
-            els.clearSearchBtn.classList.toggle('hidden', !e.target.value);
-            applyFilters();
-        });
-        
-        els.clearSearchBtn.addEventListener('click', () => {
-            state.filters.search = '';
-            els.searchInput.value = '';
-            els.clearSearchBtn.classList.add('hidden');
-            applyFilters();
-        });
+        function renderBookDetail() {
+            const book = state.selectedBook;
+            const container = document.getElementById('detail-content');
+            if (!book) return;
 
-        // Filters UI
-        els.toggleFiltersBtn.addEventListener('click', () => {
-            els.filtersPanel.classList.toggle('hidden');
-        });
-
-        // Selects
-        [els.categorySelect, els.statusSelect, els.authorSelect].forEach(select => {
-            select.addEventListener('change', (e) => {
-                const type = e.target.id.split('-')[0]; // category, status, author
-                state.filters[type] = e.target.value;
-                applyFilters();
-            });
-        });
-
-        els.resetFiltersBtn.addEventListener('click', () => {
-            state.filters.category = 'Все';
-            state.filters.status = 'Все';
-            state.filters.author = 'Все';
-            state.filters.search = '';
-            els.searchInput.value = '';
+            const statusClass = book.status.toLowerCase() === 'в наличии' ? 'status-available' : 'status-busy';
             
-            els.categorySelect.value = 'Все';
-            els.statusSelect.value = 'Все';
-            els.authorSelect.value = 'Все';
+            // Authors styling (Chips)
+            const authorsHtml = book.authors.map(a => 
+                `<span class="detail-author-chip" onclick="onAuthorClick('${escapeHtml(a).replace(/'/g, "\\'")}')">${escapeHtml(a)}</span>`
+            ).join('');
+
+            // Categories
+            const categoriesHtml = book.categories.map(cat => 
+                `<span class="detail-cat-badge">${escapeHtml(cat)}</span>`
+            ).join('');
+
+            // Action Button
+            const isAvailable = book.status.toLowerCase() === 'в наличии';
+            const btnText = isAvailable ? 'Хочу почитать' : 'Занять очередь';
             
-            els.filtersPanel.classList.add('hidden');
-            applyFilters();
-        });
+            const actionButtonHtml = `
+                <button class="action-button" onclick="handleAction()">
+                    ${escapeHtml(btnText)}
+                </button>
+            `;
 
-        // Modal
-        els.closeModalBtn.addEventListener('click', closeModal);
-        els.modalBackdrop.addEventListener('click', closeModal);
-        els.modalActionBtn.addEventListener('click', handleAction);
-        els.modalAuthorBtn.addEventListener('click', handleAuthorClick);
+            // Reviews
+            let reviewsHtml = '';
+            if (book.reviews && book.reviews.length > 0) {
+                const reviewsList = book.reviews.map(r => 
+                    `<div class="review-item">"${escapeHtml(r)}"</div>`
+                ).join('');
+                reviewsHtml = `
+                    <div class="detail-section">
+                        <div class="section-title">Отзывы</div>
+                        <div class="reviews-list">
+                            ${reviewsList}
+                        </div>
+                    </div>
+                `;
+            }
 
-        // Fullscreen
-        els.fullscreenOverlay.addEventListener('click', closeFullscreen);
-        els.closeFullscreenBtn.addEventListener('click', closeFullscreen);
+            container.innerHTML = `
+                <div class="detail-main">
+                    <img src="${book.coverUrl || 'https://via.placeholder.com/160x240?text=No+Cover'}" class="detail-cover" alt="Cover" onerror="this.src='https://via.placeholder.com/160x240?text=No+Cover'">
+                    <h2 class="detail-title">${escapeHtml(book.title)}</h2>
+                    <div class="detail-author-row">${authorsHtml}</div>
+                    
+                    <div class="detail-meta-row">
+                        <div class="detail-cats-wrapper">
+                            ${categoriesHtml}
+                        </div>
+                        <span class="detail-status-badge ${statusClass}">${escapeHtml(book.status)}</span>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="section-title">О книге</div>
+                    <div class="detail-text">${escapeHtml(book.description || 'Описание отсутствует.')}</div>
+                </div>
+                
+                ${actionButtonHtml}
+                
+                ${reviewsHtml}
+            `;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
 
         // Start
-        init();
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
