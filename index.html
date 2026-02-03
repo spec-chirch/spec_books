@@ -26,6 +26,8 @@
             --status-available-text: #2e7d32;
             --status-busy-bg: #ffebee;
             --status-busy-text: #c62828;
+            --status-reading-bg: #fff3e0;
+            --status-reading-text: #ef6c00;
         }
 
         body.dark-mode {
@@ -47,6 +49,8 @@
             --status-available-text: #a5d6a7;
             --status-busy-bg: #b71c1c;
             --status-busy-text: #ef9a9a;
+            --status-reading-bg: #5d4037;
+            --status-reading-text: #ffcc80;
         }
 
         /* Global Reset & Scrollbar hiding */
@@ -220,6 +224,11 @@
         .status-busy {
             background-color: var(--status-busy-bg);
             color: var(--status-busy-text);
+        }
+
+        .status-reading {
+            background-color: var(--status-reading-bg);
+            color: var(--status-reading-text);
         }
 
         .categories-container {
@@ -587,7 +596,7 @@
                                 <input type="checkbox" name="filter-status" value="В наличии"> В наличии
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="filter-status" value="На руках"> На руках
+                                <input type="checkbox" name="filter-status" value="Читают"> Читают
                             </label>
                         </div>
                     </div>
@@ -678,8 +687,9 @@
         function generateMockCSV() {
             return `Статус,Название,Автор_1,Автор_2,Автор_3,Автор_4,Категория_1,Категория_2,Категория_3,Обложка,Аннотация,Telegram,Читатель,Отзыв_1,Отзыв_2,Отзыв_3,Отзыв_4,Отзыв_5
 В наличии,Гарри Поттер и философский камень,Дж.К. Роулинг,,,,Фэнтези,Приключения,,https://m.media-amazon.com/images/I/81q77Q39nEL._AC_UF1000,1000_QL80_.jpg,Жизнь десятилетнего Гарри Поттера нельзя назвать сладкой: родители умерли, едва ему исполнился год...,user1,,Отличная книга!,,
-На руках,Искусство программирования,Дональд Кнут,,,,Компьютеры,Наука,Образование,https://m.media-amazon.com/images/I/41MSw6-7JBL._AC_UF1000,1000_QL80_.jpg,Фундаментальная монография...,user2,reader_bob,Сложно но круто,Классика,,,
+Читают,Искусство программирования,Дональд Кнут,,,,Компьютеры,Наука,Образование,https://m.media-amazon.com/images/I/41MSw6-7JBL._AC_UF1000,1000_QL80_.jpg,Фундаментальная монография...,user2,reader_bob,Сложно но круто,Классика,,,
 В наличии,Благие знамения,Терри Пратчетт,Нил Гейман,,,Фэнтези,Юмор,,https://m.media-amazon.com/images/I/81X4R7QhFkL._AC_UF1000,1000_QL80_.jpg,Конец света близок...,user3,,Смешно до слез,Обожаю Пратчетта,Гейман гений,,
+Недоступно,Скрытая Книга,Неизвестный,,,,Мистика,,,https://via.placeholder.com/150,Эта книга не должна быть видна...,user4,,,,,
 `;
         }
 
@@ -743,7 +753,8 @@
                 reviews: [getIdx('отзыв_1'), getIdx('отзыв_2'), getIdx('отзыв_3'), getIdx('отзыв_4'), getIdx('отзыв_5')]
             };
 
-            state.books = dataRows.map(row => {
+            // Parse and add row index (index + 2 because rows[0] is header)
+            state.books = dataRows.map((row, index) => {
                 const val = (i) => (i >= 0 && row[i]) ? row[i] : '';
                 const authors = idx.authors.map(i => val(i)).filter(s => s !== '');
                 const categories = idx.categories.map(i => val(i)).filter(s => s !== '');
@@ -753,6 +764,7 @@
                 categories.forEach(c => state.uniqueCategories.add(c));
 
                 return {
+                    rowIndex: index + 2, // Store original row number (header is 1)
                     status: val(idx.status),
                     title: val(idx.title),
                     coverUrl: val(idx.cover),
@@ -763,7 +775,9 @@
                     categories: categories,
                     reviews: reviews
                 };
-            }).filter(book => book.title);
+            })
+            // Filter invalid books AND unavailable books
+            .filter(book => book.title && book.status.toLowerCase() !== 'недоступно');
 
             populateFilterCheckboxes();
             filterBooks();
@@ -902,30 +916,40 @@
             state.selectedBook = null;
         }
 
+        // --- Telegram Interaction ---
+        function sendWantToRead(row, title) {
+            const data = {
+                action: "want_read",
+                row: row,
+                title: title
+            };
+            tg.sendData(JSON.stringify(data));
+        }
+
         function handleAction() {
             if (!state.selectedBook) return;
             const book = state.selectedBook;
             const isAvailable = book.status.toLowerCase() === 'в наличии';
             
-            let message = '';
-            const authorsStr = book.authors.join(', ');
-
             if (isAvailable) {
-                // Request to borrow
-                message = `Привет, могу ли я взять почитать твою книгу "${book.title}" (${authorsStr})?`;
+                // Use new logic: send data to bot
+                sendWantToRead(book.rowIndex, book.title);
             } else {
-                // Request to queue
+                // Use existing logic: open telegram link for queue
+                let message = '';
+                const authorsStr = book.authors.join(', ');
+                
                 // Bold formatting in Telegram link url usually works with asterisks if client supports it, otherwise just text
                 message = `Привет, я хочу занять очередь на книгу *${book.title}* (${authorsStr})`;
-            }
 
-            const encodedMessage = encodeURIComponent(message);
-            const url = `https://t.me/${book.ownerUsername}?text=${encodedMessage}`;
-            
-            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
-                window.Telegram.WebApp.openTelegramLink(url);
-            } else {
-                window.open(url, '_blank');
+                const encodedMessage = encodeURIComponent(message);
+                const url = `https://t.me/${book.ownerUsername}?text=${encodedMessage}`;
+                
+                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
+                    window.Telegram.WebApp.openTelegramLink(url);
+                } else {
+                    window.open(url, '_blank');
+                }
             }
         }
 
@@ -943,18 +967,22 @@
                 const card = document.createElement('div');
                 card.className = 'book-card';
                 
-                const statusClass = book.status.toLowerCase() === 'в наличии' ? 'status-available' : 'status-busy';
+                // Determine Status Style
+                const s = book.status.toLowerCase();
+                let statusClass = 'status-busy'; // Default red
+                if (s === 'в наличии') {
+                    statusClass = 'status-available';
+                } else if (s === 'читают' || s === 'на руках') {
+                    statusClass = 'status-reading';
+                }
+
                 const authorsStr = book.authors.join(', ');
                 
                 const categoriesHtml = book.categories.map(cat => 
                     `<span class="category-badge">${escapeHtml(cat)}</span>`
                 ).join('');
 
-                // Layout optimized for mobile expansion:
-                // Cover fixed size left.
-                // Info column stretches right.
-                // Title/Author can wrap.
-                // Footer (Cats + Status) pushes to bottom.
+                // Layout optimized for mobile expansion
                 card.innerHTML = `
                     <img src="${book.coverUrl || 'https://via.placeholder.com/80x120?text=No+Cover'}" class="book-cover" alt="Cover" onerror="this.src='https://via.placeholder.com/80x120?text=No+Cover'">
                     <div class="book-info">
@@ -977,7 +1005,14 @@
             const container = document.getElementById('detail-content');
             if (!book) return;
 
-            const statusClass = book.status.toLowerCase() === 'в наличии' ? 'status-available' : 'status-busy';
+            // Determine Status Style
+            const s = book.status.toLowerCase();
+            let statusClass = 'status-busy';
+            if (s === 'в наличии') {
+                statusClass = 'status-available';
+            } else if (s === 'читают' || s === 'на руках') {
+                statusClass = 'status-reading';
+            }
             
             // Authors styling (Chips)
             const authorsHtml = book.authors.map(a => 
@@ -993,6 +1028,7 @@
             const isAvailable = book.status.toLowerCase() === 'в наличии';
             const btnText = isAvailable ? 'Хочу почитать' : 'Занять очередь';
             
+            // The onclick handler `handleAction` triggers the appropriate logic based on status
             const actionButtonHtml = `
                 <button class="action-button" onclick="handleAction()">
                     ${escapeHtml(btnText)}
